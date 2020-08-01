@@ -12,6 +12,9 @@ class ProductItem extends StatelessWidget {
       listen: false,
     );
 
+    final _scaffold = Scaffold.of(context);
+    final _theme = Theme.of(context);
+
     return Consumer<ProductProvider>(
       builder: (ctx, data, child) => ClipRRect(
         borderRadius: BorderRadius.circular(10),
@@ -27,8 +30,17 @@ class ProductItem extends StatelessWidget {
               backgroundColor: Colors.black87,
               title: Text(data.product.title),
               leading: IconButton(
-                onPressed: () {
-                  data.toggleFavouriteStatus();
+                onPressed: () async {
+                  try {
+                    await data.toggleFavouriteStatus();
+                  } catch (error) {
+                    _scaffold.showSnackBar(SnackBar(
+                      content: !data.product.isFavourite
+                          ? Text('Failed to mark as favourite')
+                          : Text('Failed to remove from favourite'),
+                      backgroundColor: _theme.errorColor,
+                    ));
+                  }
                 },
                 icon: Icon(
                   data.product.isFavourite

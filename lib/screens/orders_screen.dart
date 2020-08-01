@@ -5,10 +5,9 @@ import '../providers/orders_provider.dart';
 
 class OrdersScreen extends StatelessWidget {
   static const routeName = '/orders';
+
   @override
   Widget build(BuildContext context) {
-    final ordersProvider = Provider.of<OrdersProvider>(context);
-
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -19,9 +18,22 @@ class OrdersScreen extends StatelessWidget {
         ),
         title: Text('Your Orders'),
       ),
-      body: ListView.builder(
-        itemBuilder: (ctx, i) => OrderItem(ordersProvider.orders[i]),
-        itemCount: ordersProvider.orders.length,
+      body: FutureBuilder(
+        future: Provider.of<OrdersProvider>(context, listen: false)
+            .fetchAndSetOrders(),
+        builder: (ctx, dataSnapShot) {
+          if (dataSnapShot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: CircularProgressIndicator(),
+            );
+          } else {
+            return Consumer<OrdersProvider>(
+                builder: (ctx, orderData, child) => ListView.builder(
+                      itemBuilder: (ctx, i) => OrderItem(orderData.orders[i]),
+                      itemCount: orderData.orders.length,
+                    ));
+          }
+        },
       ),
     );
   }

@@ -1,45 +1,13 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
 import '../models/product.dart';
 
 class ProductsProvider with ChangeNotifier {
-  List<Product> _items = [
-    Product(
-      id: 'p1',
-      title: 'Red Shirt',
-      description: 'A red shirt - it is pretty red!',
-      price: 29.99,
-      imageUrl:
-          'https://cdn.pixabay.com/photo/2016/10/02/22/17/red-t-shirt-1710578_1280.jpg',
-      isFavourite: false,
-    ),
-    Product(
-      id: 'p2',
-      title: 'Trousers',
-      description: 'A nice pair of trousers.',
-      price: 59.99,
-      imageUrl:
-          'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Trousers%2C_dress_%28AM_1960.022-8%29.jpg/512px-Trousers%2C_dress_%28AM_1960.022-8%29.jpg',
-      isFavourite: false,
-    ),
-    Product(
-      id: 'p3',
-      title: 'Yellow Scarf',
-      description: 'Warm and cozy - exactly what you need for the winter.',
-      price: 19.99,
-      imageUrl:
-          'https://live.staticflickr.com/4043/4438260868_cc79b3369d_z.jpg',
-      isFavourite: false,
-    ),
-    Product(
-      id: 'p4',
-      title: 'A Pan',
-      description: 'Prepare any meal you want.',
-      price: 49.99,
-      imageUrl:
-          'https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Cast-Iron-Pan.jpg/1024px-Cast-Iron-Pan.jpg',
-      isFavourite: false,
-    ),
-  ];
+  String apiUrl = 'https://flutter-shop-877ad.firebaseio.com/';
+
+  List<Product> _items = [];
 
   List<Product> get items {
     return [..._items];
@@ -53,30 +21,95 @@ class ProductsProvider with ChangeNotifier {
     return _items.firstWhere((product) => product.id == id);
   }
 
-  void addProduct(Product product) {
-    var newProduct = Product(
-      id: DateTime.now().toString(),
-      title: product.title,
-      description: product.description,
-      imageUrl: product.imageUrl,
-      price: product.price,
-      isFavourite: false,
-    );
-
-    _items.add(newProduct);
-
-    notifyListeners();
+  Future<void> fetchAndSetproducts() async {
+    try {
+      final response = await http.get(apiUrl + 'products.json');
+      final fetchedData = json.decode(response.body) as Map<String, dynamic>;
+      final List<Product> loadedProducts = [];
+      fetchedData.forEach((productId, productData) {
+        loadedProducts.add(Product(
+          id: productId,
+          title: productData['title'],
+          description: productData['description'],
+          price: productData['price'],
+          imageUrl: productData['imageUrl'],
+          isFavourite: productData['isFavourite'],
+        ));
+      });
+      _items = loadedProducts;
+      notifyListeners();
+    } catch (error) {
+      throw error;
+    }
   }
 
-  void updateProduct(String productId, Product newProduct) {
+  Future<void> addProduct(Product product) async {
+    try {
+      final response = await http.post(
+        apiUrl + 'products.json',
+        body: json.encode({
+          'title': product.title,
+          'description': product.description,
+          'imageUrl': product.imageUrl,
+          'price': product.price,
+          'isFavourite': false,
+        }),
+      );
+
+      var newProduct = Product(
+        id: json.decode(response.body)['name'],
+        title: product.title,
+        description: product.description,
+        imageUrl: product.imageUrl,
+        price: product.price,
+        isFavourite: false,
+      );
+
+      _items.add(newProduct);
+      notifyListeners();
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  Future<void> updateProduct(String productId, Product newProduct) async {
     final index = _items.indexWhere((product) => product.id == productId);
-    if (index > 0) return;
-    _items[index] = newProduct;
-    notifyListeners();
+    if (index < 0) return;
+
+    try {
+      await http.patch(
+        apiUrl + 'products/$productId.json',
+        body: json.encode({
+          'title': newProduct.title,
+          'description': newProduct.description,
+          'imageUrl': newProduct.imageUrl,
+          'price': newProduct.price,
+          'isFavourite': newProduct.isFavourite,
+        }),
+      );
+
+      _items[index] = newProduct;
+      notifyListeners();
+    } catch (error) {
+      throw error;
+    }
   }
 
-  void deleteProduct(String productId) {
-    _items.removeWhere((product) => product.id == productId);
+  Future<void> deleteProduct(String productId) async {
+    final existingProductIndex =
+        _items.indexWhere((product) => product.id == productId);
+    var existingProduct = _items[existingProductIndex];
+
+    _items.removeAt(existingProductIndex);
     notifyListeners();
+
+    final response = await http.delete(apiUrl + 'products/$productId');
+
+    if (response.statusCode >= 400) {
+      _items.insert(existingProductIndex, existingProduct);
+      notifyListeners();
+      throw Exception('Deletion failed.');
+    }
+    existingProduct = null;
   }
 }

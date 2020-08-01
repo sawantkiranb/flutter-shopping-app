@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../providers/products_provider.dart';
 import '../widgets/app_drawer.dart';
 import '../providers/cart_provider.dart';
 import '../widgets/badge.dart';
@@ -61,7 +62,30 @@ class _ProductsOverviewPageState extends State<ProductsOverviewPage> {
           ),
         ],
       ),
-      body: ProductsGrid(_showFavourites),
+      body: FutureBuilder(
+        future: Provider.of<ProductsProvider>(context, listen: false)
+            .fetchAndSetproducts(),
+        builder: (context, dataSnapshot) {
+          if (dataSnapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: CircularProgressIndicator(),
+            );
+          } else {
+            if (dataSnapshot.error != null) {
+              return Center(
+                child: Text(
+                  'Something went wrong. Please try after some time.',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              );
+            } else
+              return ProductsGrid(_showFavourites);
+          }
+        },
+      ),
       drawer: AppDrawer(),
     );
   }

@@ -13,6 +13,9 @@ class UserProductItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final _scaffold = Scaffold.of(context);
+    final _themeContext = Theme.of(context);
+
     return ListTile(
       leading: CircleAvatar(
         backgroundImage: NetworkImage(imageUrl),
@@ -28,17 +31,25 @@ class UserProductItem extends StatelessWidget {
                 Navigator.of(context)
                     .pushNamed(EditProductScreen.routeName, arguments: id);
               },
-              color: Theme.of(context).primaryColor,
+              color: _themeContext.primaryColor,
             ),
             IconButton(
               icon: Icon(Icons.delete),
-              onPressed: () {
-                Provider.of<ProductsProvider>(
-                  context,
-                  listen: false,
-                ).deleteProduct(id);
+              onPressed: () async {
+                try {
+                  await Provider.of<ProductsProvider>(context, listen: false)
+                      .deleteProduct(id);
+                } catch (error) {
+                  _scaffold.hideCurrentSnackBar();
+                  _scaffold.showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to delete product'),
+                      backgroundColor: _themeContext.errorColor,
+                    ),
+                  );
+                }
               },
-              color: Theme.of(context).errorColor,
+              color: _themeContext.errorColor,
             ),
           ],
         ),
